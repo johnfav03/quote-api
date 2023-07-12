@@ -2,6 +2,7 @@ const express = require('express');
 const { createClient } = require('@supabase/supabase-js')
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
+const LRU = require('lru-cache')
 
 const app = express();
 
@@ -10,6 +11,10 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 app.use(express.json())
+const cache = new LRU({
+    max: 20,
+    maxAge: 1000 * 60 * 5,
+});
 
 /**
  * @swagger
@@ -58,7 +63,6 @@ app.use(express.json())
 app.post('/quotes', async (req, res) => {
     try {
         const { author, content } = req.body
-        console.log(author + " :: " + content)
         const { data, error } = await supabase
             .from('quotes')
             .insert([{ author: author, content: content }])
@@ -66,6 +70,7 @@ app.post('/quotes', async (req, res) => {
         if (error) {
             throw new Error(error.message);
         }
+        cache.set(`quote-${data.id}`, data);
         res.status(201).json(data);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -109,12 +114,18 @@ app.post('/quotes', async (req, res) => {
  */
 app.get('/quotes', async (req, res) => {
     try {
+        const cachedQuotes = cache.get('quotes');
+        if (cachedQuotes) {
+            console.log('cache hit');
+            return res.status(200).json(cachedQuotes);
+        }
         const { data, error } = await supabase
             .from('quotes')
             .select('*');
         if (error) {
             throw new Error(error.message);
         }
+        cache.set('quotes', data);
         res.status(200).json(data);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -174,6 +185,11 @@ app.get('/quotes', async (req, res) => {
 app.get('/quotes/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        const cachedQuote = cache.get(`quote-${id}`);
+        if (cachedQuote) {
+            console.log('cache hit');
+            return res.status(200).json(cachedQuote);
+        }
         const { data, error } = await supabase
             .from('quotes')
             .select()
@@ -185,6 +201,7 @@ app.get('/quotes/:id', async (req, res) => {
         if (!data) {
             return res.status(404).json({ error: 'Quote not found' });
         }
+        cache.set(`quote-${id}`, data);
         res.status(200).json(data);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -324,10 +341,10 @@ app.put('/quotes/:id', async (req, res) => {
         if (error) {
             throw new Error(error.message);
         }
-        console.log(data)
         if (data.length === 0) {
             return res.status(404).json({ error: 'Quote not found' });
         }
+        cache.set(`quote-${data.id}`, data);
         res.status(201).json(data);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -392,6 +409,7 @@ app.delete('/quotes/:id', async (req, res) => {
         if (data.length === 0) {
             return res.status(404).json({ error: 'Quote not found' });
         }
+        cache.del(`quote-${data.id}`);
         res.status(201).json({ message: 'Quote deleted successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });
