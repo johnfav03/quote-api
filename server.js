@@ -65,6 +65,32 @@ app.get('/quotes/:id', async (req, res) => {
     }
 });
 
+app.get('/authors', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('quotes')
+            .select('*')
+        if (error) {
+            throw new Error(error.message);
+        }
+        count = 0;
+        const authors = data.map((quote) => [quote.id, quote.author]);
+        const result = authors.reduce((acc, [id, author]) => {
+            const existingAuthor = acc.find(item => item.author === author);
+            if (existingAuthor) {
+                existingAuthor.quotes.push(id);
+            } else {
+                count += 1;
+                acc.push({ id: count, author, quotes: [id] });
+            }
+            return acc;
+          }, []);
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Route to update a specific note
 app.put('/quotes/:id', async (req, res) => {
     try {
