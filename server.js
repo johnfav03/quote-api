@@ -11,7 +11,50 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 app.use(express.json())
 
-// Route to create a new note
+/**
+ * @swagger
+ * /quotes/:
+ *   post:
+ *     summary: Create a new quote
+ *     description: Create a new quote in the database with provided data.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               author:
+ *                 type: string
+ *               content:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Successful operation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                 created_at: 
+ *                   type: string
+ *                   format: date-time
+ *                 author:
+ *                   type: string
+ *                 content:
+ *                   type: string
+ *       500:
+ *         description: Database error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                     type: string
+ */
 app.post('/quotes', async (req, res) => {
     try {
         const { author, content } = req.body
@@ -29,7 +72,41 @@ app.post('/quotes', async (req, res) => {
     }
 });
 
-// Route to retrieve all notes
+/**
+ * @swagger
+ * /quotes/:
+ *   get:
+ *     summary: Get all quotes
+ *     description: Retrieve all quotes from the database.
+ *     responses:
+ *       200:
+ *         description: Successful operation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   created_at: 
+ *                     type: string
+ *                     format: date-time
+ *                   author:
+ *                     type: string
+ *                   content:
+ *                     type: string
+ *       500:
+ *         description: Database error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                     type: string
+ */
 app.get('/quotes', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -44,7 +121,56 @@ app.get('/quotes', async (req, res) => {
     }
 });
 
-// Route to retrieve a specific note
+/**
+ * @swagger
+ * /quotes/{id}:
+ *   get:
+ *     summary: Get a quote by ID
+ *     description: Retrieve a quote by its ID from the database.
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         description: ID of the quote
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Successful operation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                 created_at: 
+ *                   type: string
+ *                   format: date-time
+ *                 author:
+ *                   type: string
+ *                 content:
+ *                   type: string
+ *       404:
+ *         description: Not found error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                     type: string
+ *                     example: "Quote not found"
+ *       500:
+ *         description: Database error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                     type: string
+ */
 app.get('/quotes/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -65,6 +191,40 @@ app.get('/quotes/:id', async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /authors/:
+ *   get:
+ *     summary: Get all authors
+ *     description: Retrieve all unique authors from the database.
+ *     responses:
+ *       200:
+ *         description: Successful operation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   author:
+ *                     type: string
+ *                   quotes:
+ *                     type: array
+ *                     items:
+ *                       type: integer
+ *       500:
+ *         description: Database error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                     type: string
+ */
 app.get('/authors', async (req, res) => {
     try {
         const { data, error } = await supabase
@@ -91,7 +251,67 @@ app.get('/authors', async (req, res) => {
     }
 });
 
-// Route to update a specific note
+/**
+ * @swagger
+ * /quotes/{id}:
+ *   put:
+ *     summary: Update a quote by ID
+ *     description: Update a quote by its ID in the database with provided data.
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         description: ID of the quote
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               author:
+ *                 type: string
+ *               content:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Successful operation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                 created_at: 
+ *                   type: string
+ *                   format: date-time
+ *                 author:
+ *                   type: string
+ *                 content:
+ *                   type: string
+ *       404:
+ *         description: Not found error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                     type: string
+ *                     example: "Quote not found"
+ *       500:
+ *         description: Database error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                     type: string
+ */
 app.put('/quotes/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -114,7 +334,50 @@ app.put('/quotes/:id', async (req, res) => {
     }
 });
 
-// Route to delete a specific note
+/**
+ * @swagger
+ * /quotes/{id}:
+ *   delete:
+ *     summary: Delete a quote by ID
+ *     description: Delete a quote by its ID in the database.
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         description: ID of the quote
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       201:
+ *         description: Successful operation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Quote deleted successfully"
+ *       404:
+ *         description: Not found error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                     type: string
+ *                     example: "Quote not found"
+ *       500:
+ *         description: Database error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                     type: string
+ */
 app.delete('/quotes/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -129,20 +392,19 @@ app.delete('/quotes/:id', async (req, res) => {
         if (data.length === 0) {
             return res.status(404).json({ error: 'Quote not found' });
         }
-        res.json({ message: 'Quote deleted successfully' });
+        res.status(201).json({ message: 'Quote deleted successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Swagger configuration
-const swaggerOptions = {
+const swaggerOpts = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'RESTful API with Express, Supabase, and Sequelize',
+      title: 'RESTful Quote API with Express and Supabase',
       version: '1.0.0',
-      description: 'A simple CRUD API for storing and retrieving notes',
+      description: 'A simple CRUD API for storing and retrieving quotes',
     },
     servers: [
       {
@@ -152,11 +414,8 @@ const swaggerOptions = {
   },
   apis: ['server.js'],
 };
-
-const swaggerDocs = swaggerJsdoc(swaggerOptions);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
-
-// Start the server
+const swaggerDocs = swaggerJsdoc(swaggerOpts);
+app.use('/', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 app.listen(3000, () => {
   console.log('Server is running on http://localhost:3000');
 });
