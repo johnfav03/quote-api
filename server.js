@@ -25,12 +25,16 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+YOUR_CLIENT_ID = '408602024887-na0q3a44ea3m3h01h05nggljca42k90h.apps.googleusercontent.com';
+YOUR_CLIENT_SECRET = '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';
+CALLBACK_URL = 'http://localhost:3000/auth/google/callback';
+
 passport.use(
     new GoogleStrategy(
         {
-            clientID: '408602024887-na0q3a44ea3m3h01h05nggljca42k90h.apps.googleusercontent.com',
-            clientSecret: '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',
-            callbackURL: 'http://localhost:3000/auth/google/callback',
+            clientID: YOUR_CLIENT_ID,
+            clientSecret: YOUR_CLIENT_SECRET,
+            callbackURL: CALLBACK_URL,
         },
         (accessToken, refreshToken, profile, done) => {
             return done(null, profile);
@@ -54,10 +58,16 @@ const cache = new LRU({
     maxAge: 1000 * 60 * 5,
 });
 
+/**
+ * @swagger
+ * /auth/google:
+ *   post:
+ *     summary: Login to Google OAuth2.0
+ *     description: Login in to Google, which gives access to PUT and DELETE.
+ */
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: '/login' }), (req, res) => {
+app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: '/' }), (req, res) => {
     console.log('authenticated!');
-    res.redirect('/')
 });
 
 /**
@@ -157,6 +167,7 @@ app.post('/quotes', async (req, res) => {
  *                     type: string
  */
 app.get('/quotes', async (req, res) => {
+    console.log(req.user)
     try {
         const cachedQuotes = cache.get('quotes');
         if (cachedQuotes) {
@@ -374,6 +385,7 @@ app.get('/authors', async (req, res) => {
  *                     type: string
  */
 app.put('/quotes/:id', async (req, res) => {
+    console.log(req.user)
     if (req.isAuthenticated()) {
         try {
             const { id } = req.params;
@@ -395,7 +407,7 @@ app.put('/quotes/:id', async (req, res) => {
             res.status(500).json({ error: error.message });
         }
     } else {
-        res.redirect('/auth/google');
+        res.status(401).json({ error: 'Please authenticate' });
     }
 });
 
@@ -464,7 +476,7 @@ app.delete('/quotes/:id', async (req, res) => {
             res.status(500).json({ error: error.message });
         }
     } else {
-        res.redirect('/auth/google');
+        res.status(401).json({ error: 'Please authenticate' });
     }
 });
 
