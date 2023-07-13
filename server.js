@@ -3,8 +3,46 @@ const { createClient } = require('@supabase/supabase-js')
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const LRU = require('lru-cache')
+const session = require('express-session')
+const passport = require('passport')
+const GoogleStrategy = require('passport-google-oauth20').Strategy
+const crypto = require('crypto');
+
+const generateSessionSecret = () => {
+  const secretLength = 32; // 32 bytes = 256 bits
+  return crypto.randomBytes(secretLength).toString('hex');
+};
+const secret = generateSessionSecret();
 
 const app = express();
+app.use(
+    session({
+        secret: secret,
+        resave: false,
+        saveUninitialized: false,
+    })
+);
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.use(
+    new GoogleStrategy(
+        {
+            clientID: '408602024887-na0q3a44ea3m3h01h05nggljca42k90h.apps.googleusercontent.com',
+            clientSecret: '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',
+            callbackURL: 'http://localhost:3000/auth/google/callback',
+        },
+        (accessToken, refreshToken, profile, done) => {
+            return done(null, profile);
+        }
+    )
+);
+passport.serializeUser((user, done) => {
+    done(null, user);
+});
+passport.deserializeUser((user, done) => {
+    done(null, user);
+});
 
 const supabaseUrl = 'https://ntvkslfoxgqbpteecbse.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50dmtzbGZveGdxYnB0ZWVjYnNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE2ODg5NjI3NjgsImV4cCI6MjAwNDUzODc2OH0.IjL8Jjt542l9bmS5wTwDbaUI6RzfvkX1W5kcJHnOYnI';
@@ -14,6 +52,12 @@ app.use(express.json())
 const cache = new LRU({
     max: 20,
     maxAge: 1000 * 60 * 5,
+});
+
+app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: '/login' }), (req, res) => {
+    console.log('authenticated!');
+    res.redirect('/')
 });
 
 /**
@@ -330,24 +374,28 @@ app.get('/authors', async (req, res) => {
  *                     type: string
  */
 app.put('/quotes/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { author, content } = req.body;
-        const { data, error } = await supabase
-          .from('quotes')
-          .update({ author: author, content: content })
-          .eq('id', id)
-          .select();
-        if (error) {
-            throw new Error(error.message);
+    if (req.isAuthenticated()) {
+        try {
+            const { id } = req.params;
+            const { author, content } = req.body;
+            const { data, error } = await supabase
+              .from('quotes')
+              .update({ author: author, content: content })
+              .eq('id', id)
+              .select();
+            if (error) {
+                throw new Error(error.message);
+            }
+            if (data.length === 0) {
+                return res.status(404).json({ error: 'Quote not found' });
+            }
+            cache.set(`quote-${data.id}`, data);
+            res.status(201).json(data);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
         }
-        if (data.length === 0) {
-            return res.status(404).json({ error: 'Quote not found' });
-        }
-        cache.set(`quote-${data.id}`, data);
-        res.status(201).json(data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+    } else {
+        res.redirect('/auth/google');
     }
 });
 
@@ -396,23 +444,27 @@ app.put('/quotes/:id', async (req, res) => {
  *                     type: string
  */
 app.delete('/quotes/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { data, error } = await supabase
-            .from('quotes')
-            .delete()
-            .eq('id', id)
-            .select();
-        if (error) {
-            throw new Error(error.message);
+    if (req.isAuthenticated()) {
+        try {
+            const { id } = req.params;
+            const { data, error } = await supabase
+                .from('quotes')
+                .delete()
+                .eq('id', id)
+                .select();
+            if (error) {
+                throw new Error(error.message);
+            }
+            if (data.length === 0) {
+                return res.status(404).json({ error: 'Quote not found' });
+            }
+            cache.del(`quote-${data.id}`);
+            res.status(201).json({ message: 'Quote deleted successfully' });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
         }
-        if (data.length === 0) {
-            return res.status(404).json({ error: 'Quote not found' });
-        }
-        cache.del(`quote-${data.id}`);
-        res.status(201).json({ message: 'Quote deleted successfully' });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+    } else {
+        res.redirect('/auth/google');
     }
 });
 
