@@ -61,7 +61,7 @@ const cache = new LRU({
 /**
  * @swagger
  * /auth/google:
- *   post:
+ *   GET:
  *     summary: Login to Google OAuth2.0
  *     description: Login in to Google, which gives access to PUT and DELETE.
  */
