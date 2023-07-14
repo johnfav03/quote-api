@@ -7,6 +7,7 @@ const session = require('express-session')
 const passport = require('passport')
 const GoogleStrategy = require('passport-google-oauth20').Strategy
 const crypto = require('crypto');
+const cors = require('cors');
 
 const generateSessionSecret = () => {
   const secretLength = 32; // 32 bytes = 256 bits
@@ -15,6 +16,9 @@ const generateSessionSecret = () => {
 const secret = generateSessionSecret();
 
 const app = express();
+app.use(cors({
+    origin: 'https://www.johnfav.me'
+}));
 app.use(
     session({
         secret: secret,
