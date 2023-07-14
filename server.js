@@ -115,19 +115,23 @@ app.get('/auth/google/callback', passport.authenticate('google', { failureRedire
  *                     type: string
  */
 app.post('/quotes', async (req, res) => {
-    try {
-        const { author, content } = req.body
-        const { data, error } = await supabase
-            .from('quotes')
-            .insert([{ author: author, content: content }])
-            .select();
-        if (error) {
-            throw new Error(error.message);
+    if (req.isAuthenticated()) {
+        try {
+            const { author, content } = req.body
+            const { data, error } = await supabase
+                .from('quotes')
+                .insert([{ author: author, content: content }])
+                .select();
+            if (error) {
+                throw new Error(error.message);
+            }
+            cache.set(`quote-${data.id}`, data);
+            res.status(201).json(data);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
         }
-        cache.set(`quote-${data.id}`, data);
-        res.status(201).json(data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+    } else {
+        res.status(401).json({ error: 'Please authenticate' });
     }
 });
 
@@ -265,6 +269,66 @@ app.get('/quotes/:id', async (req, res) => {
 
 /**
  * @swagger
+ * /random:
+ *   get:
+ *     summary: Get a random quote
+ *     description: Retrieve a quote at random from the database.
+ *     responses:
+ *       200:
+ *         description: Successful operation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                 created_at: 
+ *                   type: string
+ *                   format: date-time
+ *                 author:
+ *                   type: string
+ *                 content:
+ *                   type: string
+ *       500:
+ *         description: Database error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                     type: string
+ */
+app.get('/random', async (req, res) => {
+    try {
+        var { data, error } = await supabase
+            .from('quotes')
+            .select('id');
+        var num = Math.floor(Math.random() * data.length);
+        const id = data[num].id;
+        const cachedQuote = cache.get(`quote-${id}`);
+        if (cachedQuote) {
+            console.log('cache hit');
+            return res.status(200).json(cachedQuote);
+        }
+        var { data, error } = await supabase
+            .from('quotes')
+            .select()
+            .eq('id', id)
+            .single();
+        if (error) {
+            throw new Error(error.message);
+        }
+        cache.set(`quote-${id}`, data);
+        res.status(200).json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * @swagger
  * /authors/:
  *   get:
  *     summary: Get all authors
@@ -385,7 +449,6 @@ app.get('/authors', async (req, res) => {
  *                     type: string
  */
 app.put('/quotes/:id', async (req, res) => {
-    console.log(req.user)
     if (req.isAuthenticated()) {
         try {
             const { id } = req.params;
